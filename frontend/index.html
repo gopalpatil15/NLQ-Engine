@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NLP Query Engine - Employee Data</title>
+    <link rel="stylesheet" href="/static/style.css">
+    </head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔍 NLP Query Engine</h1>
+            <p>Natural Language Interface for Employee Data</p>
+        </header>
+
+            <nav class="tabs">
+            <button class="tab-button active" data-tab="connect">Connect Database</button>
+            <button class="tab-button" data-tab="upload">Upload Documents</button>
+            <button class="tab-button" data-tab="query">Query Data</button>
+            <button class="tab-button" data-tab="metrics">Metrics</button>
+        </nav>
+
+        <main>
+            <!-- Connect Database Tab -->
+            <div id="connect" class="tab-content active">
+                <div class="card">
+                    <h2>Connect to Database</h2>
+                    <div class="form-group">
+                        <label for="connectionString">Database Connection String:</label>
+                        <input type="text" id="connectionString" 
+                               placeholder="postgresql://user:password@localhost:5432/company_db"
+                               style="width: 100%; max-width: 500px;">
+                    </div>
+                    <button id="connectBtn">Connect & Analyze Schema</button>
+                    
+                    <div id="connectionStatus" class="status"></div>
+                    
+                    <div class="examples">
+                        <h4>Connection Examples:</h4>
+                        <ul>
+                            <li>PostgreSQL: <code>postgresql://username:password@localhost:5432/database_name</code></li>
+                            <li>MySQL: <code>mysql://username:password@localhost:3306/database_name</code></li>
+                            <li>SQLite: <code>sqlite:///path/to/database.db</code></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div id="schemaDisplay" class="card" style="display: none;">
+                    <h3>Discovered Schema</h3>
+                    <div id="schemaStats"></div>
+                    <div id="schemaTree"></div>
+                </div>
+            </div>
+
+            <!-- Upload Documents Tab -->
+            <div id="upload" class="tab-content">
+                <div class="card">
+                    <h2>Upload Employee Documents</h2>
+                    
+                    <div class="upload-area" id="uploadArea">
+                        <input type="file" id="fileInput" multiple accept=".pdf,.docx,.txt,.csv" style="display: none;">
+                        <div class="upload-box" id="uploadBox">
+                            <p>📁 Click to select files or drag and drop</p>
+                            <small>Supported formats: PDF, DOCX, TXT, CSV (Max 10MB per file)</small>
+                        </div>
+                    </div>
+
+                    <div id="fileList" class="file-list" style="display: none;">
+                        <h4>Selected Files:</h4>
+                        <ul id="selectedFiles"></ul>
+                        <button id="uploadBtn">Upload Files</button>
+                    </div>
+
+                    <div id="uploadStatus" class="status"></div>
+                </div>
+            </div>
+
+            <!-- Query Data Tab -->
+            <div id="query" class="tab-content">
+                <div class="card">
+                    <h2>Natural Language Query</h2>
+                    
+                    <div class="query-input-group">
+               <input type="text" id="queryInput" 
+                   placeholder="Ask a question about your employee data..." 
+                   style="width: 100%;">
+               <button id="askBtn">Ask</button>
+                    </div>
+
+                    <div class="examples">
+                        <h4>Example Queries:</h4>
+                        <div class="example-buttons">
+                            <button data-example="How many employees do we have?">How many employees do we have?</button>
+                            <button data-example="Average salary by department">Average salary by department</button>
+                            <button data-example="List employees hired this year">List employees hired this year</button>
+                            <button data-example="Find Python developers in Engineering">Find Python developers in Engineering</button>
+                        </div>
+                    </div>
+
+                    <div id="queryHistory" class="history" style="display: none;">
+                        <h4>Recent Queries:</h4>
+                        <div id="historyList"></div>
+                    </div>
+                </div>
+
+                <div id="resultsSection" class="card" style="display: none;">
+                    <h3>Query Results</h3>
+                    <div id="resultsMeta"></div>
+                    <div id="resultsContent"></div>
+                </div>
+            </div>
+
+            <!-- Metrics Tab -->
+            <div id="metrics" class="tab-content">
+                <div class="card">
+                    <h2>System Metrics & Performance</h2>
+                    
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <h3>Query Performance</h3>
+                            <div class="metric-value" id="avgResponseTime">0.0s</div>
+                            <div class="metric-label">Average Response Time</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <h3>Cache Efficiency</h3>
+                            <div class="metric-value" id="cacheHitRate">0%</div>
+                            <div class="metric-label">Cache Hit Rate</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <h3>Query Volume</h3>
+                            <div class="metric-value" id="queryCount">0</div>
+                            <div class="metric-label">Total Queries</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <h3>Document Processing</h3>
+                            <div class="metric-value" id="documentsProcessed">0</div>
+                            <div class="metric-label">Documents Indexed</div>
+                        </div>
+                    </div>
+
+                    <div id="schemaMetrics" style="display: none;">
+                        <h3>Schema Statistics</h3>
+                        <div class="schema-stats">
+                            <div class="schema-stat">
+                                <span class="stat-value" id="tableCount">0</span>
+                                <span class="stat-label">Tables</span>
+                            </div>
+                            <div class="schema-stat">
+                                <span class="stat-value" id="columnCount">0</span>
+                                <span class="stat-label">Columns</span>
+                            </div>
+                            <div class="schema-stat">
+                                <span class="stat-value" id="relationshipCount">0</span>
+                                <span class="stat-label">Relationships</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>NLP Query Engine &copy; 2024</p>
+        </footer>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
