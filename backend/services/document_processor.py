@@ -5,7 +5,6 @@ import pandas as pd
 import logging
 from typing import List, Dict, Any
 import uuid
-from sentence_transformers import SentenceTransformer
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -35,6 +34,7 @@ class DocumentProcessor:
                 # Generate embeddings for chunks (ensure model is loaded)
                 if self.model is None:
                     try:
+                        from sentence_transformers import SentenceTransformer
                         self.model = SentenceTransformer(self._model_name)
                     except Exception as e:
                         logger.error(f"Failed to load embedding model: {e}")
@@ -178,6 +178,7 @@ class DocumentProcessor:
         # Ensure model loaded and encode query
         if self.model is None:
             try:
+                from sentence_transformers import SentenceTransformer
                 self.model = SentenceTransformer(self._model_name)
             except Exception as e:
                 logger.error(f"Failed to load embedding model: {e}")

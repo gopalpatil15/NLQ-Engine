@@ -19,9 +19,9 @@ logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(
-    title="NLP Query Engine",
-    description="Natural Language Query Engine for Employee Data",
-    version="1.0.0"
+    title="LLM Query Engine",
+    description="LLM-powered Query Engine for Database Access with User Authentication",
+    version="2.0.0"
 )
 
 # CORS middleware
@@ -61,7 +61,9 @@ app.state.processing_status = processing_status
 from backend.api.routes import ingestion as ingestion_router_mod
 from backend.api.routes import query as query_router_mod
 from backend.api.routes import schema as schema_router_mod
+from backend.api.routes import auth as auth_router_mod
 
+app.include_router(auth_router_mod.router, prefix="/api/auth", tags=["auth"])
 app.include_router(ingestion_router_mod.router, prefix="/api/ingest", tags=["ingest"])
 app.include_router(query_router_mod.router, prefix="/api/query", tags=["query"])
 app.include_router(schema_router_mod.router, prefix="/api/schema", tags=["schema"])

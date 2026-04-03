@@ -2,26 +2,80 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
 
 # Virtual environments
 .env
+.env.local
+.env.*.local
 .venv/
 venv/
 ENV/
+env/
 
-# Streamlit secrets
-.streamlit/secrets.toml
+# IDE and editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+*.sublime-project
+*.sublime-workspace
+
+# PyCharm
+.idea/
+*.iml
 
 # Logs
 *.log
-
-# OS / Editor junk
-.DS_Store
-Thumbs.db
-.vscode/
-.idea/
+logs/
 
 # Build / distribution
 build/
 dist/
-*.egg-info/.
+*.egg-info/
+.eggs/
+*.whl
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+app_metadata.db
+
+# Temporary directories
+temp/
+tmp/
+*.tmp
+
+# Python
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+*.pyo
+
+# Node (if frontend uses npm)
+node_modules/
+package-lock.json
+yarn.lock
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+
+# Downloaded tools/binaries
+sqlite-tools-win-x64-*
+
+**/__pycache__/
+*.pyc
+.env
+.venv/

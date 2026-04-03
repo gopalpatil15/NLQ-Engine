@@ -3,6 +3,7 @@ from sqlalchemy.exc import SQLAlchemyError
 import logging
 from typing import Dict, List, Any
 import re
+from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
 

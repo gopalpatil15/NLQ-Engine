@@ -3,7 +3,8 @@
 // ========================
 let currentSchema = null;
 let connectionString = localStorage.getItem('connectionString') || '';
-let queryHistory = JSON.parse(localStorage.getItem('queryHistory') || '[]');
+let authToken = localStorage.getItem('authToken') || '';
+let currentUser = localStorage.getItem('currentUser') || '';
 
 const API_BASE = window.location.origin;
 
@@ -91,6 +92,109 @@ function openTab(tabId, event) {
             if (connInput) connInput.focus();
             break;
     }
+}
+
+// ========================
+// Authentication
+// ========================
+async function login() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value.trim();
+
+    if (!username || !password) {
+        showStatus('Please enter username and password', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/api/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            authToken = data.access_token;
+            currentUser = data.username;
+            localStorage.setItem('authToken', authToken);
+            localStorage.setItem('currentUser', currentUser);
+
+            updateAuthUI();
+            showStatus(`Welcome, ${currentUser}!`, 'success');
+            openTab('connect');
+        } else {
+            showStatus(data.detail || 'Login failed', 'error');
+        }
+    } catch (error) {
+        showStatus('Login failed: ' + error.message, 'error');
+    }
+}
+
+async function register() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value.trim();
+
+    if (!username || !password) {
+        showStatus('Please enter username and password', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/api/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            authToken = data.access_token;
+            currentUser = data.username;
+            localStorage.setItem('authToken', authToken);
+            localStorage.setItem('currentUser', currentUser);
+
+            updateAuthUI();
+            showStatus(`Account created! Welcome, ${currentUser}!`, 'success');
+            openTab('connect');
+        } else {
+            showStatus(data.detail || 'Registration failed', 'error');
+        }
+    } catch (error) {
+        showStatus('Registration failed: ' + error.message, 'error');
+    }
+}
+
+function logout() {
+    authToken = '';
+    currentUser = '';
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('currentUser');
+    updateAuthUI();
+    showStatus('Logged out successfully', 'success');
+    openTab('connect');
+}
+
+function updateAuthUI() {
+    const loginForm = document.getElementById('loginForm');
+    const userInfo = document.getElementById('userInfo');
+    const currentUserSpan = document.getElementById('currentUser');
+
+    if (authToken && currentUser) {
+        loginForm.style.display = 'none';
+        userInfo.style.display = 'block';
+        currentUserSpan.textContent = `Welcome, ${currentUser}!`;
+    } else {
+        loginForm.style.display = 'block';
+        userInfo.style.display = 'none';
+        currentUserSpan.textContent = '';
+    }
+}
+
+function getAuthHeaders() {
+    return authToken ? { 'Authorization': `Bearer ${authToken}` } : {};
 }
 
 // ========================
@@ -189,9 +293,10 @@ async function testConnection() {
     try {
         const response = await fetch(`${API_BASE}/api/ingest/database`, {
             method: 'POST',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                ...getAuthHeaders()
             },
             body: JSON.stringify({ 
                 connection_string: connectionString 
@@ -236,7 +341,7 @@ function setExampleQuery(query) {
 
 async function processQuery() {
     const queryInput = document.getElementById('queryInput');
-    const queryBtn = document.getElementById('queryBtn');
+    const queryBtn = document.getElementById('askBtn');
     const query = queryInput ? queryInput.value.trim() : '';
 
     if (!query) {
@@ -244,47 +349,60 @@ async function processQuery() {
         return;
     }
 
-    const connInput = document.getElementById('connectionString');
-    if (connInput) {
-        connectionString = connInput.value.trim();
+    if (!authToken) {
+        showStatus('Please login first', 'error');
+        return;
     }
-    
+
     if (!connectionString) {
         showStatus('Please connect to a database first', 'error');
         openTab('connect', null);
         return;
     }
 
+    // Get selected mode
+    const modeRadios = document.querySelectorAll('input[name="queryMode"]');
+    let mode = 'llm';
+    for (const radio of modeRadios) {
+        if (radio.checked) {
+            mode = radio.value;
+            break;
+        }
+    }
+
     if (queryBtn) {
         queryBtn.disabled = true;
         queryBtn.innerHTML = '<div class="loading"></div> Processing...';
     }
-    
+
     showStatus('Processing query...', 'info');
 
     try {
         const response = await fetch(`${API_BASE}/api/query`, {
             method: 'POST',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                ...getAuthHeaders()
             },
             body: JSON.stringify({
                 query: query,
-                connection_string: connectionString
+                connection_string: connectionString,
+                mode: mode
             })
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorData = await response.json();
+            throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
         }
 
         const data = await response.json();
 
         if (data.status === 'success') {
             showStatus('Query executed successfully!', 'success');
-            displayResults(data.result);
-            addToHistory(query, data.result);
+            displayResults(data.result, data.generated_sql, data.mode);
+            loadQueryHistory(); // Load from server instead of local storage
         } else {
             throw new Error(data.message || data.detail || 'Query failed');
         }
@@ -294,12 +412,15 @@ async function processQuery() {
     } finally {
         if (queryBtn) {
             queryBtn.disabled = false;
-            queryBtn.textContent = 'Ask';
+            queryBtn.textContent = 'Execute Query';
         }
     }
 }
+            queryBtn.disabled = false;
+            queryBtn.textContent = 'Ask';
+        
 
-function displayResults(result) {
+function displayResults(result, generatedSql, mode) {
     const resultsSection = document.getElementById('resultsSection');
     const resultsMeta = document.getElementById('resultsMeta');
     const resultsContent = document.getElementById('resultsContent');
@@ -309,12 +430,12 @@ function displayResults(result) {
     resultsSection.style.display = 'block';
 
     if (resultsMeta) {
-        let metaHTML = '';
+        let metaHTML = `<span>Mode: ${mode}</span>`;
         if (result.timestamp) {
             metaHTML += `<span>Time: ${new Date(result.timestamp).toLocaleTimeString()}</span>`;
         }
         if (result.response_time !== undefined) {
-            metaHTML += `<span>Response: ${result.response_time.toFixed(2)}s</span>`;
+            metaHTML += `<span>Response: ${result.response_time}ms</span>`;
         }
         if (result.cache_hit !== undefined) {
             const cacheClass = result.cache_hit ? 'cache-hit' : 'cache-miss';
@@ -337,28 +458,19 @@ function displayResults(result) {
 
     let contentHTML = '';
 
-    if (result.query_type === 'sql' && result.results) {
-        contentHTML += renderTableResults(result.results, 'Database Results');
-    } else if (result.query_type === 'document' && result.results) {
-        contentHTML += renderDocumentResults(result.results, 'Document Results');
-    } else if (result.query_type === 'hybrid') {
-        if (result.sql_results) {
-            contentHTML += renderTableResults(result.sql_results, 'Database Results');
-        }
-        if (result.document_results) {
-            contentHTML += renderDocumentResults(result.document_results, 'Document Results');
-        }
-    } else if (result.results) {
-        contentHTML += renderTableResults(result.results, 'Results');
+    // Display results
+    if (result.results) {
+        contentHTML += renderTableResults(result.results, 'Query Results');
     } else {
         contentHTML += '<p>No results found.</p>';
     }
 
-    if (result.sql_generated) {
+    // Display generated SQL if available
+    if (generatedSql) {
         contentHTML += `
             <div class="sql-preview">
                 <h4>Generated SQL:</h4>
-                <pre><code>${result.sql_generated}</code></pre>
+                <pre><code>${generatedSql}</code></pre>
             </div>
         `;
     }
@@ -368,7 +480,7 @@ function displayResults(result) {
 }
 
 function renderTableResults(data, title) {
-    if (!data || !Array.isArray(data) || data.length === 0) {
+    if (!data || !Array.isArray(data) || data.length === 0 || typeof data[0] !== 'object') {
         return `<p>No table results found.</p>`;
     }
 
@@ -407,9 +519,9 @@ function renderTableResults(data, title) {
 }
 
 function renderDocumentResults(documents, title) {
-    if (!documents || !Array.isArray(documents) || documents.length === 0) {
-        return `<p>No document results found.</p>`;
-    }
+    if (!data || !Array.isArray(data) || data.length === 0 || typeof data[0] !== 'object') {
+    return `<p>No table results found.</p>`;
+   }
 
     let docsHTML = `
         <div class="result-section">
@@ -446,31 +558,36 @@ function renderDocumentResults(documents, title) {
 // ========================
 // Query History
 // ========================
-function addToHistory(query, result) {
-    const historyItem = {
-        query: query,
-        timestamp: new Date().toISOString(),
-        response_time: result.response_time || 0,
-        type: result.query_type || 'unknown'
-    };
+async function loadQueryHistory() {
+    if (!authToken) return;
 
-    queryHistory.unshift(historyItem);
-    
-    if (queryHistory.length > 10) {
-        queryHistory = queryHistory.slice(0, 10);
+    try {
+        const response = await fetch(`${API_BASE}/api/query/history`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                ...getAuthHeaders()
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            if (data.status === 'success') {
+                updateHistoryDisplay(data.history);
+            }
+        }
+    } catch (error) {
+        console.error('Failed to load query history:', error);
     }
-    
-    localStorage.setItem('queryHistory', JSON.stringify(queryHistory));
-    updateHistoryDisplay();
 }
 
-function updateHistoryDisplay() {
+function updateHistoryDisplay(history) {
     const historySection = document.getElementById('queryHistory');
     const historyList = document.getElementById('historyList');
 
     if (!historySection || !historyList) return;
 
-    if (queryHistory.length === 0) {
+    if (!history || history.length === 0) {
         historySection.style.display = 'none';
         return;
     }
@@ -478,24 +595,37 @@ function updateHistoryDisplay() {
     historySection.style.display = 'block';
     historyList.innerHTML = '';
 
-    queryHistory.forEach(item => {
+    history.forEach(item => {
         const historyItem = document.createElement('div');
         historyItem.className = 'history-item';
-        
+
+        const statusClass = item.status === 'success' ? 'success' : 'error';
+        const statusText = item.status === 'success' ? '✓' : '✗';
+        const responseTime = item.response_time ? `${item.response_time}ms` : '';
+
         historyItem.innerHTML = `
-            <div class="history-query">${item.query}</div>
+            <div class="history-query">${item.query_text}</div>
             <div class="history-meta">
-                ${item.response_time ? `${item.response_time.toFixed(2)}s` : ''}
+                <span class="history-mode">${item.mode}</span>
+                <span class="history-status ${statusClass}">${statusText}</span>
+                <span class="history-time">${responseTime}</span>
             </div>
         `;
-        
+
         historyItem.addEventListener('click', () => {
             const queryInput = document.getElementById('queryInput');
             if (queryInput) {
-                queryInput.value = item.query;
+                queryInput.value = item.query_text;
+                // Set mode radio button
+                const modeRadios = document.querySelectorAll('input[name="queryMode"]');
+                modeRadios.forEach(radio => {
+                    if (radio.value === item.mode) {
+                        radio.checked = true;
+                    }
+                });
             }
         });
-        
+
         historyList.appendChild(historyItem);
     });
 }
@@ -748,29 +878,33 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    const queryBtn = document.getElementById('queryBtn');
-    if (queryBtn) {
-        queryBtn.addEventListener('click', processQuery);
+    // Auth event listeners
+    const loginBtn = document.getElementById('loginBtn');
+    if (loginBtn) {
+        loginBtn.addEventListener('click', login);
     }
 
-    const queryInput = document.getElementById('queryInput');
-    if (queryInput) {
-        queryInput.addEventListener('keydown', function(event) {
-            if (event.key === 'Enter') {
-                processQuery();
-            }
-        });
+    const registerBtn = document.getElementById('registerBtn');
+    if (registerBtn) {
+        registerBtn.addEventListener('click', register);
     }
 
-    const exampleButtons = document.querySelectorAll('.example-buttons button');
-    exampleButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            setExampleQuery(this.textContent);
-        });
-    });
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', logout);
+    }
+
+    // Update query button ID reference
+    const askBtn = document.getElementById('askBtn');
+    if (askBtn) {
+        askBtn.addEventListener('click', processQuery);
+    }
+
+    // Initialize auth UI
+    updateAuthUI();
 
     openTab('connect', null);
 
-    console.log('NLP Query Engine initialized successfully');
+    console.log('LLM Query Engine initialized successfully');
 });
 

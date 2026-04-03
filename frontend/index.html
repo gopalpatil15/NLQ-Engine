@@ -3,14 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NLP Query Engine - Employee Data</title>
+    <title>LLM Query Engine - Database Access</title>
     <link rel="stylesheet" href="/static/style.css">
     </head>
 <body>
     <div class="container">
         <header>
-            <h1>🔍 NLP Query Engine</h1>
-            <p>Natural Language Interface for Employee Data</p>
+            <h1>🤖 LLM Query Engine</h1>
+            <p>AI-Powered Database Queries with User Authentication</p>
+            <div id="authSection" class="auth-section">
+                <div id="loginForm" class="auth-form">
+                    <input type="text" id="username" placeholder="Username" style="margin-right: 10px;">
+                    <input type="password" id="password" placeholder="Password" style="margin-right: 10px;">
+                    <button id="loginBtn">Login</button>
+                    <button id="registerBtn">Register</button>
+                </div>
+                <div id="userInfo" class="user-info" style="display: none;">
+                    <span id="currentUser">Welcome, user!</span>
+                    <button id="logoutBtn">Logout</button>
+                </div>
+            </div>
         </header>
 
             <nav class="tabs">
@@ -78,13 +90,22 @@
             <!-- Query Data Tab -->
             <div id="query" class="tab-content">
                 <div class="card">
-                    <h2>Natural Language Query</h2>
-                    
+                    <h2>Database Query</h2>
+
+                    <div class="query-mode-selector">
+                        <label>
+                            <input type="radio" name="queryMode" value="llm" checked> LLM Mode (Natural Language)
+                        </label>
+                        <label>
+                            <input type="radio" name="queryMode" value="sql"> SQL Mode (Raw SQL)
+                        </label>
+                    </div>
+
                     <div class="query-input-group">
-               <input type="text" id="queryInput" 
-                   placeholder="Ask a question about your employee data..." 
-                   style="width: 100%;">
-               <button id="askBtn">Ask</button>
+                        <input type="text" id="queryInput"
+                            placeholder="Ask a question in natural language or enter SQL SELECT query..."
+                            style="width: 100%;">
+                        <button id="askBtn">Execute Query</button>
                     </div>
 
                     <div class="examples">
@@ -93,12 +114,12 @@
                             <button data-example="How many employees do we have?">How many employees do we have?</button>
                             <button data-example="Average salary by department">Average salary by department</button>
                             <button data-example="List employees hired this year">List employees hired this year</button>
-                            <button data-example="Find Python developers in Engineering">Find Python developers in Engineering</button>
+                            <button data-example="SELECT * FROM employees LIMIT 10">SELECT * FROM employees LIMIT 10</button>
                         </div>
                     </div>
 
                     <div id="queryHistory" class="history" style="display: none;">
-                        <h4>Recent Queries:</h4>
+                        <h4>Your Query History:</h4>
                         <div id="historyList"></div>
                     </div>
                 </div>
