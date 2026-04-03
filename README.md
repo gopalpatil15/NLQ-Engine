@@ -1,22 +1,23 @@
-# NLQ-Engine
+# LLM Query Engine
 
-Natural Language Query Engine (NLQ-Engine) — a small demo that exposes a FastAPI backend and a minimal static frontend which lets you connect to a database, discover schema, upload documents for processing, and run natural-language-style queries against employee data.
+LLM Query Engine — a FastAPI backend with authentication and a static frontend for AI-powered database queries. Connect to any database, run natural language queries converted to SQL by OpenAI's GPT models, or execute raw SQL directly.
 
-This repository is intended as a developer demo / prototype. It includes:
+This repository includes:
 
-- `backend/` — FastAPI application with a small rule-based NL-to-SQL layer, schema discovery helpers, document processing service (with sentence-transformers support), and modular routers.
-- `frontend/` — A single-page static UI (`index.html`) with `static/script.js` and `static/style.css` to interact with the backend.
-- `data/` — Example SQLite database (`sqldb.db`) used for quick testing (Chinook-style sample DB included).
+- `backend/` — FastAPI application with LLM-powered SQL generation, user authentication (JWT), persistent query history, schema discovery, and modular routers.
+- `frontend/` — Single-page static UI with login/register, database connection, and query interface.
+- `data/` — Example SQLite database for testing.
 
 ## Quick overview
 
-- Start the backend (FastAPI + Uvicorn). The backend serves the frontend at `/` and exposes API endpoints under `/api/...`.
-- The frontend is static files served by the backend; open `http://127.0.0.1:8000` in a browser to use the UI.
-- The document processor uses a sentence-transformers model for embeddings; the model is loaded lazily (on first use) to keep startup fast.
+- Start the backend (FastAPI + Uvicorn). Serves frontend at `/` and API endpoints under `/api/...`.
+- Frontend is static files served by backend; open `http://127.0.0.1:8000` in browser.
+- Requires OpenAI API key for LLM queries; falls back gracefully if unavailable.
 
 ## Prerequisites
 
 - Python 3.10+ installed on the machine.
+- OpenAI API key (for LLM SQL generation).
 - Recommended: Create a virtual environment.
 
 On Windows PowerShell (example):
@@ -28,7 +29,13 @@ python -m pip install --upgrade pip
 python -m pip install -r backend/requirements.txt
 ```
 
-Note: `sentence-transformers` downloads model weights the first time a model is created. The code defers loading until the first document processing request, but ensure you have a working internet connection and sufficient disk/memory if you use the document search features.
+Set environment variable for OpenAI:
+
+```powershell
+$env:OPENAI_API_KEY = "your-openai-api-key-here"
+```
+
+Note: If OpenAI API key is not set, LLM queries will fail but raw SQL queries will still work.
 
 ## Running the app (development)
 
@@ -52,58 +59,86 @@ http://127.0.0.1:8000
 ```
 
 UI features:
-- Connect Database: Enter a connection string (SQLite example: `sqlite:///e:/NLQ-Engine/data/sqldb.db`) and click *Connect & Analyze Schema*.
-- Upload Documents: Upload PDFs/DOCX/TXT/CSV for indexing (background job).
-- Query Data: Ask natural-language-style questions; the backend returns structured results (simulated / rule-based for the demo).
+- User Authentication: Register/login with JWT tokens for secure access.
+- Connect Database: Enter any SQLAlchemy-supported connection string and analyze schema.
+- Query Data: Choose between LLM-powered natural language queries or raw SQL execution.
+- Query History: View your personal query history with performance metrics.
 
 ## Important backend API endpoints
 
 - GET `/health`
   - Health check: returns `{"status":"healthy"}`.
 
+- POST `/api/auth/register`
+  - Register new user. Body: `{ "username": "user", "password": "pass" }`.
+  - Response: `{ "access_token": "...", "token_type": "bearer", "username": "user" }`.
+
+- POST `/api/auth/login`
+  - Login user. Body: `{ "username": "user", "password": "pass" }`.
+  - Response: `{ "access_token": "...", "token_type": "bearer", "username": "user" }`.
+
 - POST `/api/ingest/database`
-  - Discover schema for a database. Accepts either:
-    - JSON body: `{ "connection_string": "sqlite:///path/to/db" }` (recommended), or
-    - Query parameter: `?connection_string=...` (legacy support).
-  - Response: `{ "status": "success", "schema": { ... } }` or HTTP 400/422 with details.
-
-- POST `/api/ingest/documents`
-  - Upload files (multipart form). Returns a `job_id` and processes in background. Poll `/api/ingest/status/{job_id}` for progress.
-
-- GET `/api/ingest/status/{job_id}`
-  - Check ingestion / processing progress.
+  - Discover schema for a database. Requires auth header.
+  - Body: `{ "connection_string": "sqlite:///path/to/db" }`.
+  - Response: `{ "status": "success", "schema": { ... } }`.
 
 - POST `/api/query`
-  - Run a natural-language query. Body: `{ "query": "How many employees do we have?", "connection_string": "..." }`.
-  - Response: `{ "status": "success", "result": { ... } }`.
+  - Execute query in LLM or SQL mode. Requires auth header.
+  - Body: `{ "query": "How many employees?", "connection_string": "...", "mode": "llm" }`.
+  - Response: `{ "status": "success", "result": { ... }, "generated_sql": "..." }`.
 
 - GET `/api/query/history`
-  - Returns last queries processed by the query engine instance.
+  - Get user's query history. Requires auth header.
+  - Response: `{ "status": "success", "history": [...] }`.
 
 - GET `/favicon.ico`
   - Serves a small SVG so browsers don't 404 on favicon requests.
 
 ## Example PowerShell API calls
 
-Health check:
+Register user:
 
 ```powershell
-Invoke-RestMethod -Method GET -Uri http://127.0.0.1:8000/health | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/auth/register `
+  -Body (@{username='testuser'; password='testpass'} | ConvertTo-Json) `
+  -ContentType 'application/json'
 ```
 
-Discover schema (JSON body):
+Login (save token for other requests):
 
 ```powershell
+$loginResponse = Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/auth/login `
+  -Body (@{username='testuser'; password='testpass'} | ConvertTo-Json) `
+  -ContentType 'application/json'
+$token = $loginResponse.access_token
+```
+
+Discover schema (with auth):
+
+```powershell
+$headers = @{Authorization="Bearer $token"}
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/ingest/database `
-  -Body (@{connection_string='sqlite:///e:/NLQ-Engine/data/sqldb.db'} | ConvertTo-Json) `
-  -ContentType 'application/json' | ConvertTo-Json
+  -Headers $headers `
+  -Body (@{connection_string='sqlite:///e:/NLQ-Engine/data/Chinook_Sqlite.sql'} | ConvertTo-Json) `
+  -ContentType 'application/json'
 ```
 
-Run a query:
+Run LLM query:
 
 ```powershell
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/query `
-  -Body (@{query='How many employees do we have?'} | ConvertTo-Json) -ContentType 'application/json' | ConvertTo-Json
+  -Headers $headers `
+  -Body (@{query='How many employees do we have?'; connection_string='sqlite:///e:/NLQ-Engine/data/Chinook_Sqlite.sql'; mode='llm'} | ConvertTo-Json) `
+  -ContentType 'application/json'
+```
+
+Run SQL query:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/query `
+  -Headers $headers `
+  -Body (@{query='SELECT COUNT(*) FROM employees'; connection_string='sqlite:///e:/NLQ-Engine/data/Chinook_Sqlite.sql'; mode='sql'} | ConvertTo-Json) `
+  -ContentType 'application/json'
 ```
 
 ## Troubleshooting
