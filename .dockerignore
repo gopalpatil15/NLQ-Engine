@@ -1,0 +1,34 @@
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Environment files (inject as env vars at runtime instead)
+.env
+.env.local
+
+# Binary tools — no place in a container image
+temp/
+tmp/
+
+# IDE / OS noise
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Git history
+.git/
+.gitignore
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/

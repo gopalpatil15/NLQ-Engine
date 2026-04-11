@@ -31,9 +31,17 @@ python -m pip install -r backend/requirements.txt
 
 Set environment variable for OpenAI:
 
+**Windows (PowerShell):**
 ```powershell
 $env:OPENAI_API_KEY = "your-openai-api-key-here"
 ```
+
+**Linux / macOS (bash/zsh):**
+```bash
+export OPENAI_API_KEY="your-openai-api-key-here"
+```
+
+Alternatively, copy `.env.example` to `.env` and fill in your key — the app loads it automatically if `python-dotenv` is installed.
 
 Note: If OpenAI API key is not set, LLM queries will fail but raw SQL queries will still work.
 
@@ -119,7 +127,7 @@ Discover schema (with auth):
 $headers = @{Authorization="Bearer $token"}
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/ingest/database `
   -Headers $headers `
-  -Body (@{connection_string='sqlite:///e:/NLQ-Engine/data/Chinook_Sqlite.sql'} | ConvertTo-Json) `
+  -Body (@{connection_string='sqlite:///./data/Chinook_Sqlite.db'} | ConvertTo-Json) `
   -ContentType 'application/json'
 ```
 
@@ -128,7 +136,7 @@ Run LLM query:
 ```powershell
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/query `
   -Headers $headers `
-  -Body (@{query='How many employees do we have?'; connection_string='sqlite:///e:/NLQ-Engine/data/Chinook_Sqlite.sql'; mode='llm'} | ConvertTo-Json) `
+  -Body (@{query='How many employees do we have?'; connection_string='sqlite:///./data/Chinook_Sqlite.db'; mode='llm'} | ConvertTo-Json) `
   -ContentType 'application/json'
 ```
 
@@ -137,7 +145,7 @@ Run SQL query:
 ```powershell
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/query `
   -Headers $headers `
-  -Body (@{query='SELECT COUNT(*) FROM employees'; connection_string='sqlite:///e:/NLQ-Engine/data/Chinook_Sqlite.sql'; mode='sql'} | ConvertTo-Json) `
+  -Body (@{query='SELECT COUNT(*) FROM employees'; connection_string='sqlite:///./data/Chinook_Sqlite.db'; mode='sql'} | ConvertTo-Json) `
   -ContentType 'application/json'
 ```
 
@@ -166,7 +174,19 @@ PRs welcome. If you add heavy dependencies or model changes, update `backend/req
 
 ## License
 
-This project is a demo. No license file is included; add one if you plan to publish or share this repository publicly.
+This project is a demo. No license file is included; add MIT License via GitHub UI: **Add file → Create new file → type `LICENSE` → GitHub offers a template picker**.
+
+---
+## Docker
+
+Run with a single command (no Python install needed):
+
+```bash
+docker build -t nlq-engine .
+docker run -p 8000:8000 -e OPENAI_API_KEY=sk-... nlq-engine
+```
+
+Then open http://localhost:8000 in your browser.
 
 ---
 If you want, I can also:

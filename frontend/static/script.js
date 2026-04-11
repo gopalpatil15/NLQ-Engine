@@ -416,9 +416,6 @@ async function processQuery() {
         }
     }
 }
-            queryBtn.disabled = false;
-            queryBtn.textContent = 'Ask';
-        
 
 function displayResults(result, generatedSql, mode) {
     const resultsSection = document.getElementById('resultsSection');
@@ -519,9 +516,9 @@ function renderTableResults(data, title) {
 }
 
 function renderDocumentResults(documents, title) {
-    if (!data || !Array.isArray(data) || data.length === 0 || typeof data[0] !== 'object') {
-    return `<p>No table results found.</p>`;
-   }
+    if (!documents || !Array.isArray(documents) || documents.length === 0 || typeof documents[0] !== 'object') {
+        return `<p>No table results found.</p>`;
+    }
 
     let docsHTML = `
         <div class="result-section">

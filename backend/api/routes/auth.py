@@ -91,24 +91,3 @@ async def login(user: UserLogin, db: Session = Depends(get_db)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Login failed"
         )
-    cursor = conn.cursor()
-
-    cursor.execute(
-        "SELECT id, password_hash FROM users WHERE username=?",
-        (user.username,)
-    )
-
-    row = cursor.fetchone()
-    conn.close()
-
-    if not row:
-        raise HTTPException(status_code=400, detail="Invalid credentials")
-
-    user_id, password_hash = row
-
-    if not auth_service.verify_password(user.password, password_hash):
-        raise HTTPException(status_code=400, detail="Invalid credentials")
-
-    token = auth_service.create_token(user_id)
-
-    return {"access_token": token}

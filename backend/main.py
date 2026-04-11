@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()  # Load .env file before anything else reads env vars
+
 from fastapi import FastAPI, HTTPException, UploadFile, File, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -16,6 +19,14 @@ from backend.services.query_engine import QueryEngine
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Startup validation
+if not os.getenv('OPENAI_API_KEY'):
+    logger.warning(
+        "WARNING: OPENAI_API_KEY is not set. LLM queries will fail. "
+        "Set it with: export OPENAI_API_KEY=sk-... (Linux/Mac) or "
+        "$env:OPENAI_API_KEY='sk-...' (Windows PowerShell)"
+    )
 
 # Create FastAPI app
 app = FastAPI(
@@ -84,6 +95,15 @@ async def favicon():
         </svg>
         '''
         return Response(content=svg, media_type='image/svg+xml')
+
+# Catch-all for client-side routing
+@app.get("/{full_path:path}")
+async def catch_all(full_path: str):
+    """Serve index.html for any unmatched route (SPA support)."""
+    index = os.path.join(frontend_dir, "index.html")
+    if os.path.exists(index):
+        return FileResponse(index)
+    raise HTTPException(status_code=404, detail="Not found")
 
 @app.get("/health")
 async def health_check():

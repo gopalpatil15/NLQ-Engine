@@ -1,11 +1,13 @@
 import os
 import PyPDF2
+from sentence_transformers import SentenceTransformer
 from docx import Document
 import pandas as pd
 import logging
 from typing import List, Dict, Any
 import uuid
 import numpy as np
+from huggingface_hub import hf_hub_download
 
 logger = logging.getLogger(__name__)
 
@@ -178,8 +180,7 @@ class DocumentProcessor:
         # Ensure model loaded and encode query
         if self.model is None:
             try:
-                from sentence_transformers import SentenceTransformer
-                self.model = SentenceTransformer(self._model_name)
+                self.model = SentenceTransformer(self._model_name, device='cpu')
             except Exception as e:
                 logger.error(f"Failed to load embedding model: {e}")
                 return []
